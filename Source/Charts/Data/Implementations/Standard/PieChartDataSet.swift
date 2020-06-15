@@ -47,6 +47,10 @@ open class PieChartDataSet: ChartDataSet, IPieChartDataSet
     // MARK: - Styling functions and accessors
 
     private var _sliceSpace = CGFloat(0.0)
+    
+    open var _roundSlice = Bool(false)
+    
+    open var _accessArray = NSArray()
 
     /// the space in pixels between the pie-slices
     /// **default**: 0
@@ -74,6 +78,27 @@ open class PieChartDataSet: ChartDataSet, IPieChartDataSet
 
     /// When enabled, slice spacing will be 0.0 when the smallest value is going to be smaller than the slice spacing itself.
     open var automaticallyDisableSliceSpacing: Bool = false
+    
+    
+    open var roundSlice: Bool {
+        
+        get{
+            return _roundSlice
+        }
+        set{
+            _roundSlice = newValue
+        }
+    }
+    
+    open var accessArray: NSArray {
+        
+        get{
+            return _accessArray
+        }
+        set{
+            _accessArray = newValue
+        }
+    }
 
     /// indicates the selection distance of a pie slice
     open var selectionShift = CGFloat(18.0)
@@ -115,7 +140,9 @@ open class PieChartDataSet: ChartDataSet, IPieChartDataSet
         let copy = super.copyWithZone(zone) as! PieChartDataSet
         copy._sliceSpace = _sliceSpace
         copy.selectionShift = selectionShift
+        copy._accessArray = accessArray
         copy.highlightColor = highlightColor
+        copy._roundSlice = roundSlice
         return copy
     }
 }

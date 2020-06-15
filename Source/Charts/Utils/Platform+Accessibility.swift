@@ -15,7 +15,7 @@ internal func accessibilityPostScreenChangedNotification(withElement element: An
 /// A simple abstraction over UIAccessibilityElement and NSAccessibilityElement.
 open class NSUIAccessibilityElement: UIAccessibilityElement
 {
-    private let containerView: UIView
+    public let containerView: UIView
 
     final var isHeader: Bool = false
     {

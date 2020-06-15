@@ -95,7 +95,15 @@ open class PieChartRenderer: DataRenderer
         guard
             dataSet.automaticallyDisableSliceSpacing,
             let data = chart?.data as? PieChartData
-            else { return dataSet.sliceSpace }
+            else
+            {
+                var sliceSpace = dataSet.sliceSpace
+                if dataSet.roundSlice
+                {
+                    sliceSpace = sliceSpace * 2
+                }
+                return sliceSpace
+            }
 
         let spaceSizeRatio = dataSet.sliceSpace / min(viewPortHandler.contentWidth, viewPortHandler.contentHeight)
         let minValueRatio = dataSet.yMin / data.yValueSum * 2.0
@@ -103,6 +111,7 @@ open class PieChartRenderer: DataRenderer
         let sliceSpace = spaceSizeRatio > CGFloat(minValueRatio)
             ? 0.0
             : dataSet.sliceSpace
+        
 
         return sliceSpace
     }
@@ -145,15 +154,24 @@ open class PieChartRenderer: DataRenderer
         // This is unlike when we are naming individual slices, wherein it's alright to not use a prefix as descriptor.
         // i.e. We want to VO to say "3 Elements" even if the developer didn't specify an accessibility prefix
         // If prefix is unspecified it is safe to assume they did not want to use "Element 1", so that uses a default empty string
-        let prefix: String = chart.data?.accessibilityEntryLabelPrefix ?? "Element"
-        let description = chart.chartDescription?.text ?? dataSet.label ?? chart.centerText ??  "Pie Chart"
-
+        let prefix: String = chart.data?.accessibilityEntryLabelPrefix ?? "Adet Gösterilecek Ürün"
+        let description = chart.chartDescription?.text ?? dataSet.label ?? chart.centerText ??  "Pasta Dilim"
+        
         let
         element = NSUIAccessibilityElement(accessibilityContainer: chart)
-        element.accessibilityLabel = description + ". \(entryCount) \(prefix + (entryCount == 1 ? "" : "s"))"
+        element.accessibilityLabel = description + ". \(entryCount) \(prefix)"
         element.accessibilityFrame = chart.bounds
         element.isHeader = true
         accessibleChartElements.append(element)
+//        let prefix: String = chart.data?.accessibilityEntryLabelPrefix ?? "Element"
+//        let description = chart.chartDescription?.text ?? dataSet.label ?? chart.centerText ??  "Pie Chart"
+//
+//        let
+//        element = NSUIAccessibilityElement(accessibilityContainer: chart)
+//        element.accessibilityLabel = description + ". \(entryCount) \(prefix + (entryCount == 1 ? "" : "s"))"
+//        element.accessibilityFrame = chart.bounds
+//        element.isHeader = true
+//        accessibleChartElements.append(element)
 
         for j in 0 ..< entryCount
         {
@@ -190,7 +208,7 @@ open class PieChartRenderer: DataRenderer
                                           y: arcStartPointY))
 
                     path.addRelativeArc(center: center, radius: radius, startAngle: startAngleOuter.DEG2RAD, delta: sweepAngleOuter.DEG2RAD)
-
+                    
                     if drawInnerArc &&
                         (innerRadius > 0.0 || accountForSliceSpacing)
                     {
@@ -221,13 +239,44 @@ open class PieChartRenderer: DataRenderer
                             sweepAngleInner = 0.0
                         }
                         let endAngleInner = startAngleInner + sweepAngleInner
+                        
+                        if dataSet.roundSlice == false
+                        {
+                            path.addLine(
+                                                        to: CGPoint(
+                                                            x: center.x + innerRadius * cos(endAngleInner.DEG2RAD),
+                                                            y: center.y + innerRadius * sin(endAngleInner.DEG2RAD)))
+                            path.addRelativeArc(center: center, radius: innerRadius, startAngle: endAngleInner.DEG2RAD, delta: -sweepAngleInner.DEG2RAD)
+                        }
+                        else {
+                            let roundedValue = radius * (1-chart.transparentCircleRadiusPercent)/2
+                            let endAngleOuter = (startAngleOuter+sweepAngleOuter+endAngleInner)/2
+                            let sweepAngleForSlice = startAngleOuter/startAngleOuter*180
+                            let endAngleOuterValue = endAngleOuter
+                            let sliceCenterX = center.x + (radius - roundedValue)*cos(endAngleOuter.DEG2RAD)
+                            let sliceCenterY = center.y + (radius - roundedValue)*sin(endAngleOuter.DEG2RAD)
+                            path.addRelativeArc(center: CGPoint(x: sliceCenterX, y: sliceCenterY), radius: roundedValue, startAngle: endAngleOuterValue.DEG2RAD, delta: sweepAngleForSlice.DEG2RAD)
+                            
+                            path.addRelativeArc(center: center, radius: innerRadius, startAngle: endAngleInner.DEG2RAD, delta: -sweepAngleInner.DEG2RAD)
+                            
+                            //second draw
+                            let endAngleInnerValue = (startAngleInner+startAngleOuter)/2
+                            
+//                            let sweepAngleForSlice2 = startAngleOuter/startAngleOuter*(180)
+                            let sliceInnerCenterX = center.x + (radius - roundedValue)*cos(endAngleInnerValue.DEG2RAD)
+                            let sliceInnerCenterY = center.y + (radius - roundedValue)*sin(endAngleInnerValue.DEG2RAD)
+//                            path.addRelativeArc(center: CGPoint(x: sliceInnerCenterX, y: sliceInnerCenterY), radius: 5, startAngle: startAngleOuter.DEG2RAD, delta: -sweepAngleForSlice2.DEG2RAD)
+//                            let circleLayer = CAShapeLayer();
+//                            circleLayer.path = UIBezierPath(ovalIn: CGRect(x: sliceInnerCenterX, y: sliceInnerCenterY, width: 5, height: 5)).cgPath;
+//                            context.setFillColor(UIColor .red.cgColor)
+                            context.fillEllipse(in: CGRect(x: sliceInnerCenterX-roundedValue, y: sliceInnerCenterY-roundedValue, width: roundedValue * 2.0, height: roundedValue * 2.0))
+                            
+                        }
+//                        path.addLine(
+//                            to: CGPoint(
+//                                x: center.x + innerRadius * cos(endAngleInner.DEG2RAD),
+//                                y: center.y + innerRadius * sin(endAngleInner.DEG2RAD)))
 
-                        path.addLine(
-                            to: CGPoint(
-                                x: center.x + innerRadius * cos(endAngleInner.DEG2RAD),
-                                y: center.y + innerRadius * sin(endAngleInner.DEG2RAD)))
-
-                        path.addRelativeArc(center: center, radius: innerRadius, startAngle: endAngleInner.DEG2RAD, delta: -sweepAngleInner.DEG2RAD)
                     }
                     else
                     {
@@ -248,10 +297,13 @@ open class PieChartRenderer: DataRenderer
                             let arcEndPointX = center.x + sliceSpaceOffset * cos(angleMiddle.DEG2RAD)
                             let arcEndPointY = center.y + sliceSpaceOffset * sin(angleMiddle.DEG2RAD)
 
-                            path.addLine(
-                                to: CGPoint(
-                                    x: arcEndPointX,
-                                    y: arcEndPointY))
+                            if dataSet.roundSlice == false
+                            {
+                                path.addLine(
+                                        to: CGPoint(
+                                            x: arcEndPointX,
+                                            y: arcEndPointY))
+                            }
                         }
                         else
                         {
@@ -275,7 +327,6 @@ open class PieChartRenderer: DataRenderer
                     accessibleChartElements.append(axElement)
                 }
             }
-
             angle += sliceAngle * CGFloat(phaseX)
         }
 
@@ -789,6 +840,10 @@ open class PieChartRenderer: DataRenderer
 
             path.addRelativeArc(center: center, radius: highlightedRadius, startAngle: startAngleShifted.DEG2RAD,
                                 delta: sweepAngleShifted.DEG2RAD)
+            
+            
+            
+            
 
             var sliceSpaceRadius: CGFloat = 0.0
             if accountForSliceSpacing
@@ -827,14 +882,35 @@ open class PieChartRenderer: DataRenderer
                 }
                 let endAngleInner = startAngleInner + sweepAngleInner
 
-                path.addLine(
-                    to: CGPoint(
-                        x: center.x + innerRadius * cos(endAngleInner.DEG2RAD),
-                        y: center.y + innerRadius * sin(endAngleInner.DEG2RAD)))
+//                path.addLine(
+//                    to: CGPoint(
+//                        x: center.x + innerRadius * cos(endAngleInner.DEG2RAD),
+//                        y: center.y + innerRadius * sin(endAngleInner.DEG2RAD)))
 
-                path.addRelativeArc(center: center, radius: innerRadius,
-                                    startAngle: endAngleInner.DEG2RAD,
-                                    delta: -sweepAngleInner.DEG2RAD)
+//                path.addRelativeArc(center: center, radius: innerRadius,
+//                                    startAngle: endAngleInner.DEG2RAD,
+//                                    delta: -sweepAngleInner.DEG2RAD)
+                let roundedValue = (radius - innerRadius + set.selectionShift)/2
+                let endAngleOuter = (startAngleOuter+sweepAngleOuter+endAngleInner)/2
+                let sweepAngleForSlice = startAngleOuter/startAngleOuter*180
+                let endAngleOuterValue = endAngleOuter
+                let sliceCenterX = center.x + (innerRadius + roundedValue)*cos(endAngleOuter.DEG2RAD)
+                let sliceCenterY = center.y + (innerRadius + roundedValue)*sin(endAngleOuter.DEG2RAD)
+                path.addRelativeArc(center: CGPoint(x: sliceCenterX, y: sliceCenterY), radius: roundedValue, startAngle: endAngleOuterValue.DEG2RAD, delta: sweepAngleForSlice.DEG2RAD)
+                
+                path.addRelativeArc(center: center, radius: innerRadius, startAngle: endAngleInner.DEG2RAD, delta: -sweepAngleInner.DEG2RAD)
+                
+//                //second draw
+                
+//                let endAngleInnerValue = (startAngleInner+startAngleOuter)/2
+                
+                //                            let sweepAngleForSlice2 = startAngleOuter/startAngleOuter*(180)
+                let sliceInnerCenterX = center.x + (innerRadius + roundedValue)*cos(startAngleShifted.DEG2RAD)
+                let sliceInnerCenterY = center.y + (innerRadius + roundedValue)*sin(startAngleShifted.DEG2RAD)
+                
+
+                context.fillEllipse(in: CGRect(x: sliceInnerCenterX-roundedValue, y: sliceInnerCenterY-roundedValue, width: roundedValue * 2.0, height: roundedValue * 2.0))
+
             }
             else
             {
@@ -845,10 +921,18 @@ open class PieChartRenderer: DataRenderer
                     let arcEndPointX = center.x + sliceSpaceRadius * cos(angleMiddle.DEG2RAD)
                     let arcEndPointY = center.y + sliceSpaceRadius * sin(angleMiddle.DEG2RAD)
 
-                    path.addLine(
-                        to: CGPoint(
-                            x: arcEndPointX,
-                            y: arcEndPointY))
+                    if set.roundSlice == false
+                    {
+                        path.addLine(
+                            to: CGPoint(
+                                x: arcEndPointX,
+                                y: arcEndPointY))
+
+                    }
+                    else
+                    {
+                        
+                    }
                 }
                 else
                 {
@@ -910,15 +994,15 @@ open class PieChartRenderer: DataRenderer
             elementValueText = valueText
         }
 
-        let pieChartDataEntry = (dataSet.entryForIndex(idx) as? PieChartDataEntry)
-        let isCount = data.accessibilityEntryLabelSuffixIsCount
-        let prefix = data.accessibilityEntryLabelPrefix?.appending("\(idx + 1)") ?? pieChartDataEntry?.label ?? ""
-        let suffix = data.accessibilityEntryLabelSuffix ?? ""
-        element.accessibilityLabel = "\(prefix) : \(elementValueText) \(suffix  + (isCount ? (e.y == 1.0 ? "" : "s") : "") )"
-
-        // The modifier allows changing of traits and frame depending on highlight, rotation, etc
+        elementValueText = elementValueText.replacingOccurrences(of: "%", with: "", options: [.regularExpression, .caseInsensitive])
+        if dataSet.accessArray.firstObject != nil {
+            element.accessibilityLabel = "\(dataSet.accessArray[idx]) % \(elementValueText)"
+        }
+        else
+        {
+            element.accessibilityLabel = "Görüntülenecek ürün bulunmamaktadır"
+        }
         modifier(element)
-
         return element
     }
 }

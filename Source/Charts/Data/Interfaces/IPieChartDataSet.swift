@@ -61,5 +61,9 @@ public protocol IPieChartDataSet: IChartDataSet
 
     /// get/sets the color for the highlighted sector
     var highlightColor: NSUIColor? { get set }
+    
+    var roundSlice : Bool {get set}
+    
+    var accessArray : NSArray {get set}
 
 }
